@@ -120,11 +120,9 @@ class Server(asyncio.DatagramProtocol):
 
         value_union = Value()
         value_union.__setattr__(value_type.name, value)
-        packet = Packet(
-            sensor_id=sensor_id,
-            type=value_type,
-            value=value_union
-        )
+        packet = Packet(sensor_id=sensor_id,
+                        type=value_type,
+                        value=value_union)
         logger.debug("Sending packet len %s, data %s", sizeof(packet), packet)
         self.transport.sendto(bytes(packet), ('127.0.0.1', 12345))
         self.loop.call_later(interval, self.send_packet,
