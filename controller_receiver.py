@@ -1,11 +1,12 @@
 import socket
 
-localIP     = "127.0.0.1"
-localPort   = 12345
+controller_IP     = "127.0.0.1"
+controller_port   = 12345
+sensor_port   = 12345
 bufferSize  = 1024
 
 s = socket.socket(family = socket.AF_INET, type = socket.SOCK_DGRAM)
-s.bind((localIP, localPort))
+s.bind((controller_IP, controller_port))
 #s.listen(10)
 
 while True:
