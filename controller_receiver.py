@@ -41,6 +41,7 @@ controller_port = 12345
 sensor_port = 12345
 bufferSize = 10
 f = open("sensor data.csv","a+")
+f.write("Date time,sensor ID,type,value\n")
 now = datetime.now()
 
 try:
@@ -61,7 +62,7 @@ try:
 
         print(clientMsg)
         f= open("sensor data.csv","a+")
-        f.write("{} ,sensor ID: ,{},type: ,{},value: ,{}".format(datetime.now(), sensor_nr, value_type, sensor_reading) + '\n')
+        f.write("{},{},{},{}".format(datetime.now(), sensor_nr, value_type, sensor_reading) + '\n')
         f.close()
 
 except (KeyboardInterrupt, SystemExit):
