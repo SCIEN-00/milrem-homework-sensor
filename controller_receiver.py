@@ -51,9 +51,11 @@ try:
         # Received data format: (uint8 'sensor number', uint8 'value type', uint64 'reading') → payload length: 10B
         received_bytes = s.recvfrom(bufferSize)
         data = received_bytes[0]  # address = received_bytes[1]
+
         sensor_nr = data[0]
-        value_type = ValueType(data[1])
+        value_type = ValueType(data[1]).name
         sensor_reading = int.from_bytes(data[2:], byteorder='little')
+        
         clientMsg = "sensor ID: {}, type: {}, value: {}".format(
             sensor_nr, value_type, sensor_reading)
 
