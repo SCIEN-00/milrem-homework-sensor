@@ -100,7 +100,7 @@ class Server(asyncio.DatagramProtocol):
     def setup_sensor_sending(self):
         self.logger.info("Starting sensors")
         for x in range(NR_SENSORS):
-            interval = random.randint(0, 10)/1
+            interval = random.randint(0, 10)/10
             value_type, max_value = random.choice(
                 limited_selection_of_values_to_send)
             self.loop.call_later(interval, self.send_packet,
