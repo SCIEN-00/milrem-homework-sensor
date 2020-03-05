@@ -2,6 +2,9 @@ import socket
 from enum import IntEnum
 from ctypes import *
 from datetime import datetime
+from threading import Thread
+import collections
+from collections import deque
 
 class ValueType(IntEnum):
     """Value data type identifier"""
@@ -41,8 +44,10 @@ controller_port = 12345
 sensor_port = 12345
 bufferSize = 10
 f = open("sensor data.csv","a+")
-f.write("Date time,sensor ID,type,value\n")
+f.write("Date time,sensor ID,value\n")
 now = datetime.now()
+last_ten = collections.deque(maxlen=10)
+deque([], maxlen=10)
 
 try:
     s = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
@@ -50,19 +55,24 @@ try:
     print(f"UDP server up and listening")
     while True:
         # Received data format: (uint8 'sensor number', uint8 'value type', uint64 'reading') → payload length: 10B
-        received_bytes = s.recvfrom(bufferSize)
-        data = received_bytes[0]  # address = received_bytes[1]
-
+        try:
+            received_bytes = s.recvfrom(bufferSize)
+            data = received_bytes[0]  # address = received_bytes[1]
+        except (KeyboardInterrupt, SystemExit):
+            print(f"Listening 1 stopped.")
         sensor_nr = data[0]
         value_type = ValueType(data[1]).name
         sensor_reading = int.from_bytes(data[2:], byteorder='little')
         
-        clientMsg = "sensor ID: {}, type: {}, value: {}".format(
-            sensor_nr, value_type, sensor_reading)
+        #clientMsg = "sensor ID: {}, type: {}, value: {}".format(sensor_nr, value_type, sensor_reading)
+        #print(clientMsg)
+        if(sensor_nr == 5):
+            last_ten.append(sensor_reading)
+            print(last_ten, " ", sum(last_ten)/10)
 
-        print(clientMsg)
-        f= open("sensor data.csv","a+")
-        f.write("{},{},{},{}".format(datetime.now(), sensor_nr, value_type, sensor_reading) + '\n')
+        
+        f = open("sensor data.csv","a+")
+        f.write("{},{},{}".format(datetime.now(), sensor_nr, sensor_reading) + '\n')
         f.close()
 
 except (KeyboardInterrupt, SystemExit):
