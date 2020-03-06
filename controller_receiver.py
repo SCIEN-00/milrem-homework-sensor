@@ -2,9 +2,8 @@ import socket
 from enum import IntEnum
 from ctypes import *
 from datetime import datetime
-from threading import Thread
-import collections
-from collections import deque
+import threading
+import time
 
 class ValueType(IntEnum):
     """Value data type identifier"""
@@ -46,34 +45,40 @@ bufferSize = 10
 f = open("sensor data.csv","a+")
 f.write("Date time,sensor ID,value\n")
 now = datetime.now()
-last_ten = collections.deque(maxlen=10)
-deque([], maxlen=10)
+last_ten_que = [] * 10
+sensors_last_readings = [[], [], [], [], [], [], [], [], [], []]
 
-try:
-    s = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
-    s.bind((controller_IP, controller_port))
-    print(f"UDP server up and listening")
-    while True:
-        # Received data format: (uint8 'sensor number', uint8 'value type', uint64 'reading') → payload length: 10B
-        try:
+
+def last_ten(s_nr, s_reading):
+    sensors_last_readings[s_nr].append(s_reading)
+
+    print("sensors_last_readings[s_nr]:", sensors_last_readings[s_nr],)
+    print(sensors_last_readings, "\n")
+    return
+
+
+def listening():
+    try:
+        s = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
+        s.bind((controller_IP, controller_port))
+        print(f"UDP server up and listening")
+        while True:
+            # Received data format: (uint8 'sensor number', uint8 'value type', uint64 'reading') → payload length: 10B
             received_bytes = s.recvfrom(bufferSize)
             data = received_bytes[0]  # address = received_bytes[1]
-        except (KeyboardInterrupt, SystemExit):
-            print(f"Listening 1 stopped.")
-        sensor_nr = data[0]
-        value_type = ValueType(data[1]).name
-        sensor_reading = int.from_bytes(data[2:], byteorder='little')
-        
-        #clientMsg = "sensor ID: {}, type: {}, value: {}".format(sensor_nr, value_type, sensor_reading)
-        #print(clientMsg)
-        if(sensor_nr == 5):
-            last_ten.append(sensor_reading)
-            print(last_ten, " ", sum(last_ten)/10)
 
-        
-        f = open("sensor data.csv","a+")
-        f.write("{},{},{}".format(datetime.now(), sensor_nr, sensor_reading) + '\n')
-        f.close()
+            sensor_nr = data[0]
+            #value_type = ValueType(data[1]).name
+            sensor_reading = int.from_bytes(data[2:], byteorder='little')
 
-except (KeyboardInterrupt, SystemExit):
-    print(f"Listening stopped.")
+            threading.Thread(target=last_ten(sensor_nr, sensor_reading)).start
+            with open("sensor data.csv", "a+") as f:
+                f.write("{},{},{}".format(datetime.now(),
+                                          sensor_nr, sensor_reading) + '\n')
+
+    except (KeyboardInterrupt, SystemExit):
+        print(f"Listening stopped.")
+
+
+if __name__ == '__main__':
+    listening()
