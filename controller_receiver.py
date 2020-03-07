@@ -49,11 +49,16 @@ now = datetime.now()
 last_ten_que = [] * 10
 sensors_last_readings = [[], [], [], [], [], [], [], [], [], []]
 sensor_nr = 0
+time_updated = None
+incoming_time = None
 
 
 def average_of_ten():
     threading.Timer(1.0, average_of_ten).start()
-    if len(sensors_last_readings[sensor_nr]) >= 10:
+    global time_updated
+    global incoming_time
+    if len(sensors_last_readings[sensor_nr]
+           ) >= 10 and time_updated == incoming_time:
         print("Sensor ", sensor_nr, "average of ten is: ",
               sum(sensors_last_readings[sensor_nr]) / 10)
     return
@@ -68,18 +73,30 @@ def last_ten(s_nr, s_reading):
     return
 
 
+def request_info():
+    requ = input()
+    if requ == "test":
+        print("test input worked")
+
+
 def listening():
     try:
         s = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
         s.bind((controller_IP, controller_port))
         average_of_ten()
+        global time_updated
+        global incoming_time
 
         print(f"UDP server up and listening")
         while True:
             # Received data format: (uint8 'sensor number', uint8 'value type', uint64 'reading') → payload length: 10B
+            time_updated = datetime.now()
             received_bytes = s.recvfrom(bufferSize)
-            data = received_bytes[0]  # address = received_bytes[1]
+            incoming_time = datetime.now(
+            )  # get the time when data was acquired
+            time_updated = incoming_time
 
+            data = received_bytes[0]  # address = received_bytes[1]
             sensor_nr = data[0]
             #value_type = ValueType(data[1]).name
             sensor_reading = int.from_bytes(data[2:], byteorder='little')
@@ -87,7 +104,7 @@ def listening():
             threading.Thread(target=last_ten(sensor_nr, sensor_reading),
                              daemon=True).start
             with open("sensor data.csv", "a+") as f:
-                f.write("{},{},{}".format(datetime.now(), sensor_nr,
+                f.write("{},{},{}".format(incoming_time, sensor_nr,
                                           sensor_reading) + '\n')
 
     except (KeyboardInterrupt, SystemExit):
