@@ -1,9 +1,9 @@
-import socket
+import socket, threading, time, sched, traceback, asyncio
 from enum import IntEnum
 from ctypes import *
 from datetime import datetime
 import threading
-import time
+
 
 class ValueType(IntEnum):
     """Value data type identifier"""
@@ -22,6 +22,7 @@ class ValueType(IntEnum):
     FIELD_CHAR = 0x000C
     FIELD_BOOL = 0x000D
     FIELD_EMCY = 0x000E
+
 
 ValueTypeToCtype = {
     ValueType.FIELD_BOOL: c_bool,
@@ -42,18 +43,28 @@ controller_IP = "127.0.0.1"
 controller_port = 12345
 sensor_port = 12345
 bufferSize = 10
-f = open("sensor data.csv","a+")
-f.write("Date time,sensor ID,value\n")
+with open("sensor data.csv", "a+") as f:
+    f.write("Date time,sensor ID,value\n")
 now = datetime.now()
 last_ten_que = [] * 10
 sensors_last_readings = [[], [], [], [], [], [], [], [], [], []]
+sensor_nr = 0
+
+
+def average_of_ten():
+    threading.Timer(1.0, average_of_ten).start()
+    if len(sensors_last_readings[sensor_nr]) >= 10:
+        print("Sensor ", sensor_nr, "average of ten is: ",
+              sum(sensors_last_readings[sensor_nr]) / 10)
+    return
 
 
 def last_ten(s_nr, s_reading):
+    global sensor_nr
+    sensor_nr = s_nr
     sensors_last_readings[s_nr].append(s_reading)
-
-    print("sensors_last_readings[s_nr]:", sensors_last_readings[s_nr],)
-    print(sensors_last_readings, "\n")
+    sensors_last_readings[s_nr] = sensors_last_readings[s_nr][-10:]
+    #print(sensors_last_readings[s_nr])
     return
 
 
@@ -61,6 +72,8 @@ def listening():
     try:
         s = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
         s.bind((controller_IP, controller_port))
+        average_of_ten()
+
         print(f"UDP server up and listening")
         while True:
             # Received data format: (uint8 'sensor number', uint8 'value type', uint64 'reading') → payload length: 10B
@@ -71,13 +84,15 @@ def listening():
             #value_type = ValueType(data[1]).name
             sensor_reading = int.from_bytes(data[2:], byteorder='little')
 
-            threading.Thread(target=last_ten(sensor_nr, sensor_reading)).start
+            threading.Thread(target=last_ten(sensor_nr, sensor_reading),
+                             daemon=True).start
             with open("sensor data.csv", "a+") as f:
-                f.write("{},{},{}".format(datetime.now(),
-                                          sensor_nr, sensor_reading) + '\n')
+                f.write("{},{},{}".format(datetime.now(), sensor_nr,
+                                          sensor_reading) + '\n')
 
     except (KeyboardInterrupt, SystemExit):
         print(f"Listening stopped.")
+        exit()
 
 
 if __name__ == '__main__':
