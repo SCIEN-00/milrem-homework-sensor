@@ -3,6 +3,7 @@ from enum import IntEnum
 from ctypes import *
 from datetime import datetime
 import threading
+from threading import Thread
 
 
 class ValueType(IntEnum):
@@ -41,7 +42,7 @@ ValueTypeToCtype = {
 
 controller_IP = "127.0.0.1"
 controller_port = 12345
-sensor_port = 12345
+sensor_port = 12346
 bufferSize = 10
 with open("sensor data.csv", "a+") as f:
     f.write("Date time,sensor ID,value\n")
@@ -51,6 +52,8 @@ sensors_last_readings = [[], [], [], [], [], [], [], [], [], []]
 sensor_nr = 0
 time_updated = None
 incoming_time = None
+#s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+#s.connect((controller_IP, controller_port))
 
 
 def average_of_ten():
@@ -73,23 +76,45 @@ def last_ten(s_nr, s_reading):
     return
 
 
+class Packet(Structure):
+    _pack_ = True
+    _fields_ = [('sensor_id', c_uint8), ('kind', c_uint8)]
+
+    def __str__(self):
+        return self.__repr__()
+
+    def __repr__(self):
+        return "<Packet: sensor_id: {}, kind: {}".format(
+            self.sensor_id, self.kind)
+
+
 def request_info():
-    requ = input()
-    if requ == "test":
-        print("test input worked")
+    s = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
+    #s.bind((controller_IP, sensor_port))
+    while True:
+        try:
+            requ = input()
+            #print("Input was: ", requ[0], requ[2])
+            packet = Packet(sensor_id=int(requ[0]), type=int(requ[2]))
+            bytes(packet)
+            print("Sending", sizeof(packet), "B of data:", bytes(packet))
+            s.sendto(bytes(packet), (controller_IP, sensor_port))
+        except (KeyboardInterrupt):
+            print("Sending requests disabled.")
+            return
 
 
 def listening():
-    try:
-        s = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
-        s.bind((controller_IP, controller_port))
-        average_of_ten()
-        global time_updated
-        global incoming_time
+    s = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
+    s.bind((controller_IP, controller_port))
+    average_of_ten()
+    global time_updated
+    global incoming_time
 
-        print(f"UDP server up and listening")
-        while True:
-            # Received data format: (uint8 'sensor number', uint8 'value type', uint64 'reading') → payload length: 10B
+    print("UDP server up and listening")
+    while True:
+        try:
+            # Received data format: (uint8 'sensor number', uint8 'value type', uint64 'reading') → payload length:     10B
             time_updated = datetime.now()
             received_bytes = s.recvfrom(bufferSize)
             incoming_time = datetime.now(
@@ -106,11 +131,11 @@ def listening():
             with open("sensor data.csv", "a+") as f:
                 f.write("{},{},{}".format(incoming_time, sensor_nr,
                                           sensor_reading) + '\n')
-
-    except (KeyboardInterrupt, SystemExit):
-        print(f"Listening stopped.")
-        exit()
+        except (KeyboardInterrupt, SystemExit):
+            print(f"Listening stopped.")
+            exit()
 
 
 if __name__ == '__main__':
-    listening()
+    Thread(target=listening).start()
+    Thread(target=request_info).start()
