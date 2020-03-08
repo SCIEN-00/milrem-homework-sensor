@@ -52,8 +52,6 @@ sensors_last_readings = [[], [], [], [], [], [], [], [], [], []]
 sensor_nr = 0
 time_updated = None
 incoming_time = None
-#s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-#s.connect((controller_IP, controller_port))
 
 
 def average_of_ten():
@@ -90,7 +88,6 @@ class Packet(Structure):
 
 def request_info():
     s = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
-    #s.bind((controller_IP, sensor_port))
     while True:
         try:
             requ = input(
@@ -121,7 +118,6 @@ def listening():
             incoming_time = datetime.now(
             )  # get the time when data was acquired
             time_updated = incoming_time
-
             data = received_bytes[0]  # address = received_bytes[1]
             sensor_nr = data[0]
             #value_type = ValueType(data[1]).name
