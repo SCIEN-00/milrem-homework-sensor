@@ -93,7 +93,8 @@ def request_info():
     #s.bind((controller_IP, sensor_port))
     while True:
         try:
-            requ = input()
+            requ = input(
+            )  #insert format: "0...9"",""0...2" (sensor nr,requested data)
             #print("Input was: ", requ[0], requ[2])
             packet = Packet(sensor_id=int(requ[0]), type=int(requ[2]))
             bytes(packet)
